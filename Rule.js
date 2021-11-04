@@ -1,17 +1,16 @@
 //the sum of coordinates equals results
 class ArithmeticRule
 {
-  constructor(raw)
+  constructor(result, operator, locations)
   {
-    this.cellHash = raw.coordinates;
-    this.result = raw.result;
-    this.symbol = raw.symbol;
+    this.result = result;
+    this.symbol = operator;
+    this.locations = locations;
   }
   //check values and possible values against rule, return a list of possible values to remove
-  getImpossibleValues()
+  getImpossibleValues(cells)
   {
     let getPossibles;
-    let possibleValuesToRemove = [];
     switch(this.symbol)
     {
       case '+':
@@ -30,47 +29,49 @@ class ArithmeticRule
         return;
     }
 
-    let validatePossibleValues = function(hash, keys, curIndex, result, getPossibles, possibleValuesToRemove)
+    let isValuePossible = function(iLoc, locs, value, solution)
     {
-      let loc = JSON.parse(keys[curIndex]);
-      let cell = hash[keys[curIndex]];
+      if(iLoc === locs.length) return (value === solution);
 
-      if(curIndex === keys.length - 1)
-          return cell.possibleValues.find(value => value === result);
-
-      let found, possibles, valuesToRemove = new Array(0);
-      for(let value of cell.possibleValues)
+      let possibleSolutions = getPossibles(solution, value);
+      for(let nextSolution of possibleSolutions)
       {
-        found = false;
-        possibles = getPossibles(result, value);
-        for(let possible of possibles)
+        let nextLoc = locs[iLoc];
+        let nextCell = cells[nextLoc[0]][nextLoc[1]];
+        for(let nextValue of nextCell.getPossibleValues())
         {
-          if(validatePossibleValues(hash, keys, curIndex + 1, possible, getPossibles, possibleValuesToRemove))
+          if(isValuePossible(iLoc + 1, locs, nextValue, nextSolution))
           {
-            if(curIndex !== 0) return true;
-              found = true;
-              break;
+            return true;
           }
         }
-        if(!found)
-          valuesToRemove.push(value);
       }
-
-      if(curIndex !== 0) return false;
-
-      if(valuesToRemove.length > 0)
-      {
-        let key = keys[curIndex];
-        if(!possibleValuesToRemove[key]) possibleValuesToRemove[key] = [];
-        possibleValuesToRemove[key].push(...valuesToRemove);
-      }
+      return false;
     }
-    let keys = Object.keys(this.cellHash);
-    for(let timesToRotate = keys.length; timesToRotate > 0; timesToRotate--)
+    let possibleValuesToRemove = {};
+    //for each possible value in each cell, check to see if it is possible. If the answer is no
+    //add it to the list of values to remove
+    for(let timesToRotate = this.locations.length; timesToRotate > 0; timesToRotate--)
     {
-      if(!this.cellHash[keys[0]].isValueSet())
-        validatePossibleValues(this.cellHash, keys, 0, this.result, getPossibles, possibleValuesToRemove);
-      keys.push(keys.splice(0,1)[0]);
+      let loc = this.locations[0];
+      let cell = cells[loc[0]][loc[1]];
+      if(!cell.isValueSet())
+      {
+        let valuesToRemove = [];
+        for(let value of cell.getPossibleValues())
+        {
+          if(!isValuePossible(1, this.locations, value, this.result))
+          {
+            valuesToRemove.push(value);
+          }
+        }
+        if(valuesToRemove.length > 0)
+        {
+          possibleValuesToRemove[JSON.stringify(loc)] = valuesToRemove;
+        }
+      }
+      this.locations.push(this.locations.shift());
+
     }
     return possibleValuesToRemove;
   }
@@ -79,58 +80,60 @@ class ArithmeticRule
 //cells should have unique values from 1-n (n = coordinates.length)
 class UniqueValuesRule
 {
-  constructor(raw){
-    this.cellHash = raw.coordinates;
+  constructor(locs){
+    this.locations = locs;
   }
-
-  getImpossibleValues(){
+  getImpossibleValues(cells){
     let possiblesToRemove = {};
-    for(let keySource in this.cellHash)
+    for(let oriLoc of this.locations)
     {
-      if(this.cellHash[keySource].isValueSet())
+      let cell = cells[oriLoc[0]][oriLoc[1]];
+      if(cell.isValueSet())
       {
-        let value = this.cellHash[keySource].getValue();
-        for(let keyTarget in this.cellHash)
+        let value = cell.getValue();
+        for(let tarLoc of this.locations)
         {
-          if(keySource === keyTarget) continue;
-          if(this.cellHash[keyTarget].findIndex(value) > -1)
+          if(tarLoc === oriLoc) continue;
+          let tarCell = cells[tarLoc[0]][tarLoc[1]];
+          if(tarCell.isPossible(value))
           {
-            if(!possiblesToRemove[keyTarget]) possiblesToRemove[keyTarget] = [];
-              possiblesToRemove[keyTarget].push(value);
+            let key = JSON.stringify(tarLoc);
+            if(!possiblesToRemove[key]) possiblesToRemove[key] = [];
+              possiblesToRemove[key].push(value);
           }
         }
       }
     }
     return possiblesToRemove;
-  }
+}
     //todo: make it better
     /*{//find same value sets, (1,5) (1,5) on two cells
       let possiblesOne, possiblesTwo;
       let matchingCoordinates;
       let cellOne, cellTwo;
-      for(let iOne = 0; iOne < this.cellHash.length; iOne++)
+      for(let iOne = 0; iOne < this.locations.length; iOne++)
       {
-        cellOne = cells[this.cellHash[iOne][0]][this.cellHash[iOne][1]];
+        cellOne = cells[this.locations[iOne][0]][this.locations[iOne][1]];
         if(cellOne.isValueSet()) continue;
-        matchingCoordinates = [this.cellHash[iOne]];
+        matchingCoordinates = [this.locations[iOne]];
         possiblesOne = cellOne.possibleValues;
         for(let iTwo = iOne + 1; iTwo < cells.length; iTwo++)
         {
-          cellTwo = cells[this.cellHash[iTwo][0]][this.cellHash[iTwo][1]];
+          cellTwo = cells[this.locations[iTwo][0]][this.locations[iTwo][1]];
           if(cellTwo.isValueSet()) continue;
           possiblesTwo = cellTwo.possibleValues;
 
           if(JSON.stringify(possiblesOne) === JSON.stringify(possiblesTwo))
           {
-            matchingCoordinates.push(this.cellHash[iTwo]);
+            matchingCoordinates.push(this.locations[iTwo]);
             if (possiblesOne.length === matchingCoordinates.length)
             {
               //remove possibles from cells other than matchingCoordinates
-              for(let c = 0; c < this.cellHash.length; c++)
+              for(let c = 0; c < this.locations.length; c++)
               {
-                if(!matchingCoordinates.find(value => this.cellHash[c] === value))
+                if(!matchingCoordinates.find(value => this.locations[c] === value))
                 {
-                  let key = JSON.stringify(this.cellHash[c]);
+                  let key = JSON.stringify(this.locations[c]);
                   if(!possiblesToRemove[key]) possiblesToRemove[key] = [];
                    possiblesToRemove[key].push(...possiblesOne);
                 }
@@ -143,7 +146,7 @@ class UniqueValuesRule
     /*{//find solo possibilities, (1,2,3,4)(2,3,4)(2,3,4)
       let possibles = new Array(this.size).fill(0);
       let cPossibles = new Array(this.size);
-      for(let cell of this.cellHash)
+      for(let cell of this.locations)
       {
         if(cells[cell[0]][cell[1]].isValueSet()) possibles[cells[cell[0]][cell[1]].value - 1] = Infinity;
         else
@@ -159,8 +162,8 @@ class UniqueValuesRule
       if(index > - 1)
       {
         let value = index + 1;
-        let possibles = cells[this.cellHash[index][0]][this.cellHash[index][1]].possibleValues;
-        let key = JSON.stringify(this.cellHash[index]);
+        let possibles = cells[this.locations[index][0]][this.locations[index][1]].possibleValues;
+        let key = JSON.stringify(this.locations[index]);
         possiblesToRemove[key] = possibles.filter(v => v !== value);
       }
     }*/

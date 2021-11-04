@@ -41,16 +41,14 @@ class KendokuBoard
 
         let result = parseInt(rawRule[0]);
         let symbol = rawRule[1];
-        let coordinates = {};
-        let key;
+        let locations = [];
         for(let i = 2; i < rawRule.length; i+=2)
         {
           let r = parseInt(rawRule[i]);
           let c =  parseInt(rawRule[i+1]);
-          key = JSON.stringify([r,c]);
-          coordinates[key] = cells[r][c];
+          locations.push([r,c]);
         }
-        return new ArithmeticRule({result: result, symbol: symbol, coordinates: coordinates});
+        return new ArithmeticRule(result, symbol, locations);
     }
 
     this.#rules = new Array(0);
@@ -62,8 +60,7 @@ class KendokuBoard
       //a rule that only needs to set value should not be stored but processed immediately
       if(rule.symbol === ' ')
       {
-          let keys = Object.keys(rule.cellHash);
-          let loc = JSON.parse(keys[0]);
+        let loc = rule.locations[0];
           this.#cells[loc[0]][loc[1]].setValue(rule.result);
       }
       else
@@ -75,25 +72,23 @@ class KendokuBoard
     //add unique value rules for row and columns
     for(let r = 0; r < this.size; r++)
     {
-      let cList = {};
+      let locs = [];
       for(let c = 0; c < this.size; c++)
       {
-        let key = JSON.stringify([r,c]);
-        cList[key] = this.#cells[r][c];
+        locs.push([r,c]);
       }
-      let rule = new UniqueValuesRule({coordinates:cList});
+      let rule = new UniqueValuesRule(locs);
       this.#rules.push(rule);
     }
 
     for(let c = 0; c < this.size; c++)
     {
-      let cList = {};
+      let locs = [];
       for(let r = 0; r < this.size; r++)
       {
-        let key = JSON.stringify([r,c]);
-        cList[key] = this.#cells[r][c];
+        locs.push([r,c]);
       }
-      let rule = new UniqueValuesRule({coordinates:cList});
+      let rule = new UniqueValuesRule(locs);
       this.#rules.push(rule);
     }
   }
@@ -123,30 +118,30 @@ class KendokuBoard
         {
           for(let rule of cell.rules)
           {
-            if((!rule.coordinates) || (rule.coordinates.length === 0)) continue;
+            if((!rule.locations) || (rule.locations.length === 0)) continue;
 
             cViewableRules++;
             //figure out rule's topLeft corner
-            let topLeft = getTopLeftCoordinate(rule.coordinates);
+            let topLeft = getTopLeftCoordinate(rule.locations);
 
             if((topLeft.x === x) && (topLeft.y === y))
               RuleElement.textContent = `${rule.result}${rule.symbol}`;
 
             //figure out cell's four borders
             //if no cell above me, draw top border
-            if(!rule.coordinates.find(coordinate => ((coordinate.x === x) && (coordinate.y === y - 1))))
+            if(!rule.locations.find(loc => ((loc.x === x) && (loc.y === y - 1))))
               cellElement.style.borderTop = borderStyle;
 
             //if no cell below me, draw bottom border
-            if(!rule.coordinates.find(coordinate => ((coordinate.x === x) && (coordinate.y === y + 1))))
+            if(!rule.locations.find(loc => ((loc.x === x) && (loc.y === y + 1))))
               cellElement.style.borderBottom = borderStyle;
 
             //if no cell t othe left of me, draw left border
-            if(!rule.coordinates.find(coordinate => ((coordinate.x === x - 1) && (coordinate.y === y))))
+            if(!rule.locations.find(loc => ((loc.x === x - 1) && (loc.y === y))))
               cellElement.style.borderLeft = borderStyle;
 
             //if no cell to the right of me, draw right border
-            if(!rule.coordinates.find(coordinate => ((coordinate.x === x + 1) && (coordinate.y === y))))
+            if(!rule.locations.find(loc => ((loc.x === x + 1) && (loc.y === y))))
               cellElement.style.borderRight = borderStyle;
           }
         }*/
@@ -179,80 +174,27 @@ class KendokuBoard
   //solve cells according to Rules
   solve()
   {
+    //TODO: use work queue to only run rules when corresponding values change
     let hasValuesToRemove;
     do
     {
       hasValuesToRemove = false;
-      for(let i = 0; i < this.#rules.length; i++)
+      for(let rule of this.#rules)
       {
-        let possibleValuesToRemove = this.#rules[i].getImpossibleValues(this.#cells);
+        let possibleValuesToRemove = rule.getImpossibleValues(this.#cells);
         for(let key in possibleValuesToRemove)
         {
           let loc = JSON.parse(key);
-          if(key.length > 0)
+          let cell = this.#cells[loc[0]][loc[1]];
+          let values = possibleValuesToRemove[key];
+          for(let value of values)
           {
-            if(this.cells[loc[0]][loc[1]].removePossibleValues(possibleValuesToRemove[key]))
-            {
-                hasValuesToRemove = true;
-            }
+              if(cell.removePossibleValue(value)) {
+                  hasValuesToRemove = true;
+              }
           }
         }
       }
     }while(hasValuesToRemove);
-  }
-}
-
-class CellInfo
-{
-  constructor(possibleValues = null)
-  {
-    this.possibleValues = possibleValues;
-    this.valueElement = null;
-  }
-  toString()
-  {
-    if(DEBUG) return `${this.getValue()}{${this.possibleValues}}`;
-    if(this.isValueSet()) return `${this.getValue()}`;
-    return '';
-  }
-  isValueSet()
-  {
-    return (this.possibleValues.length === 1);
-  }
-  getValue()
-  {
-    if(this.possibleValues.length !== 1)
-        return null;
-
-    return this.possibleValues[0];
-  }
-  setValue(value)
-  {
-    if(!isNaN(value))
-      this.possibleValues = [value];
-  }
-  findIndex(value)
-  {
-    return this.possibleValues.indexOf(value);
-  }
-  removePossibleValues(values)
-  {
-    console.log(`removePossibleValues(${values})`);
-    if(values === null) return false;
-
-    let output = false;
-    //make a copy of values since values may point to cell.possibleValues,
-    //which mess up the deletion loop
-    let vToRemove = JSON.parse(JSON.stringify(values));
-    for(let value of vToRemove)
-    {
-      let index = this.possibleValues.findIndex(v => v === value);
-      if(index > -1)
-      {
-        this.possibleValues.splice(index, 1);
-        output = true;
-      }
-    }
-    return output;
   }
 }
