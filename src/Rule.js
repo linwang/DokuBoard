@@ -75,6 +75,11 @@ class ArithmeticRule
     }
     return possibleValuesToRemove;
   }
+
+  isValid(cells)
+  {
+    return true;
+  }
 }
 
 //cells should have unique values from 1-n (n = coordinates.length)
@@ -105,7 +110,25 @@ class UniqueValuesRule
       }
     }
     return possiblesToRemove;
-}
+  }
+
+  isValid(cells)
+  {
+    let uniques = {};
+    for(let loc of locations)
+    {
+      let cell = cells[loc[0]][loc[1]];
+      if(cell.isValueSet())
+      {
+        if(uniques[cell.getValue()] !== null)
+        {
+          return false;
+        }
+        uniques[cell.getValue()] = true;
+      }
+    }
+    return true;
+  }
     //todo: make it better
     /*{//find same value sets, (1,5) (1,5) on two cells
       let possiblesOne, possiblesTwo;

@@ -171,6 +171,17 @@ class KendokuBoard
       }
   }
 
+  isValid()
+  {
+    for(let rule of rules)
+    {
+      if(!rule.isValid(this.#cells)
+      {
+        return false;
+      }
+    }
+    return true;
+  }
   //solve cells according to Rules
   solve()
   {
