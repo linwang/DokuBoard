@@ -7,13 +7,15 @@ class KendokuBoard
 {
   #cells = [];
   #rules = [];
+  //ToDo: change file format to JSON
   constructor(content)
   {
     let arrOfData = content.split(';');
 
     //initialize size
     let size = parseInt(arrOfData[0]);
-    if((size < 3)||(size > 9)) console.log(`${size} is invalid.`);
+    Logging.error((size >= 3)||(size <= 9), `${size} is invalid.`);
+
     this.size = size;
 
     //initialize cells
@@ -93,6 +95,7 @@ class KendokuBoard
     }
   }
 
+  //ToDo: move to its own component
   //KendokuBoard is added under the last element in parent
   setViewPort(parent)
   {
@@ -160,6 +163,7 @@ class KendokuBoard
     }
   }
 
+  //ToDo: move to its own component
   //update cells' values
   refreshView()
   {
@@ -175,17 +179,31 @@ class KendokuBoard
   {
     for(let rule of rules)
     {
-      if(!rule.isValid(this.#cells)
+      if(!rule.isValid(this.#cells))
       {
         return false;
       }
     }
     return true;
   }
-  //solve cells according to Rules
+
+  isSolved()
+  {
+    for(let row of this.#cells)
+    {
+      for(let cell of row)
+      {
+        if(!cell.isValueSet())
+          return false;
+      }
+    }
+    return true;
+  }
+
+  //solve cells according to Rules and by guessing
   solve()
   {
-    //TODO: use work queue to only run rules when corresponding values change
+    //TODO: use work queue to only run rules with corresponding values change
     let hasValuesToRemove;
     do
     {
@@ -193,6 +211,7 @@ class KendokuBoard
       for(let rule of this.#rules)
       {
         let possibleValuesToRemove = rule.getImpossibleValues(this.#cells);
+        Logging.log(`Running rule ${rule}`);
         for(let key in possibleValuesToRemove)
         {
           let loc = JSON.parse(key);
@@ -200,12 +219,38 @@ class KendokuBoard
           let values = possibleValuesToRemove[key];
           for(let value of values)
           {
+              Logging.error(!(cell.isValueSet() && cell.getValue(value) > -1),
+              `Attempting to delete value of a set cell [${loc[0]},${loc[1]}] = ${value} with rule ${rule}`);
+
               if(cell.removePossibleValue(value)) {
                   hasValuesToRemove = true;
-              }
+                }
           }
         }
+          Logging.error(rule.isValid(this.#cells), `Board is in an invalid state after processing rule ${rule}`);
       }
     }while(hasValuesToRemove);
+
+    if(!this.isSolved())
+    {
+      //ToDo, add guessing and backtracking logic
+      //save the board's cells
+      //make a guess
+      //run the rules until no-changes are made (executeRules)
+      //check to see if the board is still valid && solved
+      //if valid && solved return
+      //if valid && not solved, make a next guess
+      //if invalid, add move to invalidMoves and undo the move
+      //I need to extract these out since the doer of these are not board but a player,
+      //a computer player.
+      //a board can make a move, execute rules,
+      //check to see if it is valid or solved.
+      //A player can make a move
+      //An AI player can generate a move, after the board carries out the move, it needs to
+      //evaluate the validity of the move. Undo if invalid and add that move to invalid moves.
+      //A history class can store a stack of moves (snapshot of board before move and value/possible value changes)
+      //the history class can undo and redo.
+
+    }
   }
 }

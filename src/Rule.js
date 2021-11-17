@@ -7,7 +7,8 @@ class ArithmeticRule
     this.symbol = operator;
     this.locations = locations;
   }
-  //check values and possible values against rule, return a list of possible values to remove
+  //check values and possible values against rule
+  //return a list of possible values to remove
   getImpossibleValues(cells)
   {
     let getPossibles;
@@ -78,7 +79,13 @@ class ArithmeticRule
 
   isValid(cells)
   {
+    //TODO: add validation
     return true;
+  }
+
+  toString()
+  {
+    return `${this.result}=${this.symbol} at locations ${this.locations}`;
   }
 }
 
@@ -115,12 +122,12 @@ class UniqueValuesRule
   isValid(cells)
   {
     let uniques = {};
-    for(let loc of locations)
+    for(let loc of this.locations)
     {
       let cell = cells[loc[0]][loc[1]];
       if(cell.isValueSet())
       {
-        if(uniques[cell.getValue()] !== null)
+        if(uniques[cell.getValue()] != null)
         {
           return false;
         }
@@ -128,6 +135,11 @@ class UniqueValuesRule
       }
     }
     return true;
+  }
+
+  toString()
+  {
+    return `Check for unique values for cells at locations ${this.locations}`;
   }
     //todo: make it better
     /*{//find same value sets, (1,5) (1,5) on two cells

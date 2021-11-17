@@ -1,4 +1,4 @@
-const DEBUG = true;
+const DEBUG = false;
 const input = document.querySelector('#input');
 const output = document.querySelector('#output');
 input.onchange = function ()
@@ -6,7 +6,7 @@ input.onchange = function ()
   const file = input.files[0];
   if(!file)
   {
-    console.log("No file");
+    Logging.error(true, "No file");
     return;
   }
   let reader = new FileReader();

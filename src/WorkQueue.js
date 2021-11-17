@@ -10,11 +10,6 @@ class WorkQueue
   {
     let func = args.shift();
     let work = new WorkItem(func, args);
-    if(DEBUG) {
-      console.log(`Running ${func.name}(${args})`);
-      func.call(...args);
-      return;
-    }
     this.workItems.push(work);
   }
   runNext()
@@ -22,7 +17,7 @@ class WorkQueue
     if(this.getCount() === 0) return false;
 
     let work = this.workItems.shift();
-    console.log(`Run work item ${work}`);
+    Logging.log(`Run work item ${work}`);
     work.func.call(... work.arguments);
     return true;
   }

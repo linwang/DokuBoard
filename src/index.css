@@ -13,42 +13,53 @@ ol, ul {
   display: table;
 }
 
-
-.status {
-  margin-bottom: 10px;
+.board-row {
+  display: flex;
+  flex-direction: row;
 }
 
-.rectangle {
+.button-choice {
   background: #fff;
   border: 1px solid #999;
-  float: left;
   font-size: 24px;
   font-weight: bold;
   line-height: 34px;
   height: 34px;
-  margin-right: -1px;
-  margin-top: -1px;
-  padding: 0;
+  margin: 10px;
+  padding: 20;
   text-align: center;
-  width: 136px;
-}
-.rectangle:focus {
-  outline: none;
+  display:flex
 }
 
-.kbd-navigation .rectangle:focus {
-  background: #ddd;
+.button-choice:focus {
+  background: #eee;
 }
 
 .dropdown {
   font-size: 20px;
 }
+
 .game {
   font-size: 20px;
-  display: flex;
-  flex-direction: column;
 }
 
 .game-info {
   margin-left: 20px;
+}
+
+.square {
+  background: #fff;
+  border: 1px solid #999;
+  font-size: 24px;
+  font-weight: bold;
+  line-height: 34px;
+  height: 34px;
+  width: 34px;
+  margin: -1px;
+  padding: 20;
+  text-align: center;
+}
+.square:focus {
+  background: #eee;
+  outline: none;
 }
