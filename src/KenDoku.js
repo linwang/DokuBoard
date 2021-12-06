@@ -1,12 +1,14 @@
+import { Logging } from './logging.js'
+import { ArithmeticRule, UniqueValuesRule } from './rule.js';
+import { CellInfo } from './cell.js';
+
 //Kendoku rules:
 // *unique numbers 1-n in each row and column
 // *four function Rules cover groups of cells i.e. cells[0][0] + cells[1][0] = 5
 //to solve a kendoku puzzle, can check the cells possible values against Kendoku rules.
 //When a cell's possible values reduce to a single value, then its value is that one
-class KendokuBoard
+export class KendokuBoard
 {
-  #cells = [];
-  #rules = [];
   //ToDo: change file format to JSON
   constructor(content)
   {
@@ -19,11 +21,11 @@ class KendokuBoard
     this.size = size;
 
     //initialize cells
-    this.#cells = new Array(this.size);
-    let possibleValues, rule;
+    this._cells = new Array(this.size);
+    let possibleValues;
     for(let r = 0; r < this.size; r++)
     {
-      this.#cells[r] = new Array(this.size);
+      this._cells[r] = new Array(this.size);
       for(let c  = 0; c < this.size; c++)
       {
         possibleValues = new Array(this.size);
@@ -31,7 +33,7 @@ class KendokuBoard
         {
           possibleValues[i] = i + 1;
         }
-        this.#cells[r][c] = new CellInfo(possibleValues);
+        this._cells[r][c] = new CellInfo(possibleValues);
       }
     }
 
@@ -53,21 +55,21 @@ class KendokuBoard
         return new ArithmeticRule(result, symbol, locations);
     }
 
-    this.#rules = new Array(0);
+    this._rules = new Array(0);
     for(let i = 1; i < arrOfData.length; i++)
     {
-      let rule = parseRule(this.#cells, arrOfData[i]);
+      let rule = parseRule(this._cells, arrOfData[i]);
       if(!rule) continue;
 
       //a rule that only needs to set value should not be stored but processed immediately
       if(rule.symbol === ' ')
       {
         let loc = rule.locations[0];
-          this.#cells[loc[0]][loc[1]].setValue(rule.result);
+          this._cells[loc[0]][loc[1]].setValue(rule.result);
       }
       else
       {
-          this.#rules.push(rule);
+          this._rules.push(rule);
       }
     }
 
@@ -80,7 +82,7 @@ class KendokuBoard
         locs.push([r,c]);
       }
       let rule = new UniqueValuesRule(locs);
-      this.#rules.push(rule);
+      this._rules.push(rule);
     }
 
     for(let c = 0; c < this.size; c++)
@@ -91,10 +93,11 @@ class KendokuBoard
         locs.push([r,c]);
       }
       let rule = new UniqueValuesRule(locs);
-      this.#rules.push(rule);
+      this._rules.push(rule);
     }
-  }
 
+    this.bSolved = false;
+  }
   //ToDo: move to its own component
   //KendokuBoard is added under the last element in parent
   setViewPort(parent)
@@ -112,7 +115,7 @@ class KendokuBoard
         cellElement.setAttribute('class', 'cell');
         let RuleElement = document.createElement('div');
         RuleElement.setAttribute('class', 'rule');
-        let cell = this.#cells[r][c];
+        let cell = this._cells[r][c];
         let borderStyle = '1px solid black';
         let cViewableRules = 0;
 
@@ -170,16 +173,16 @@ class KendokuBoard
     for(let r = 0; r < this.size; r++)
       for(let c = 0; c < this.size; c++)
       {
-        let cell = this.#cells[r][c];
+        let cell = this._cells[r][c];
         cell.valueElement.textContent = cell.toString();
       }
   }
 
   isValid()
   {
-    for(let rule of rules)
+    for(let rule of this._rules)
     {
-      if(!rule.isValid(this.#cells))
+      if(!rule.isValid(this._cells))
       {
         return false;
       }
@@ -189,33 +192,41 @@ class KendokuBoard
 
   isSolved()
   {
-    for(let row of this.#cells)
+    if(this.bSolved) {
+      return this.bSolved;
+    }
+    for(let row of this._cells)
     {
       for(let cell of row)
       {
-        if(!cell.isValueSet())
+        if(!cell.isValueSet()) {
           return false;
+        }
       }
     }
-    return true;
+    this.bSolved = true;
+    return this.bSolved;
   }
 
   //solve cells according to Rules and by guessing
   solve()
   {
+    if(this.isSolved()) {
+      return;
+    }
     //TODO: use work queue to only run rules with corresponding values change
     let hasValuesToRemove;
     do
     {
       hasValuesToRemove = false;
-      for(let rule of this.#rules)
+      for(let rule of this._rules)
       {
-        let possibleValuesToRemove = rule.getImpossibleValues(this.#cells);
+        let possibleValuesToRemove = rule.getImpossibleValues(this._cells);
         Logging.log(`Running rule ${rule}`);
         for(let key in possibleValuesToRemove)
         {
           let loc = JSON.parse(key);
-          let cell = this.#cells[loc[0]][loc[1]];
+          let cell = this._cells[loc[0]][loc[1]];
           let values = possibleValuesToRemove[key];
           for(let value of values)
           {
@@ -227,7 +238,7 @@ class KendokuBoard
                 }
           }
         }
-          Logging.error(rule.isValid(this.#cells), `Board is in an invalid state after processing rule ${rule}`);
+          Logging.error(rule.isValid(this._cells), `Board is in an invalid state after processing rule ${rule}`);
       }
     }while(hasValuesToRemove);
 
@@ -252,5 +263,30 @@ class KendokuBoard
       //the history class can undo and redo.
 
     }
+  }
+  getGrid() {
+    if(this._cells == null) {
+      return null;
+    }
+    let grid = new Array(this._cells.length);
+    for(let r = 0; r < grid.length; r++) {
+      grid[r] = new Array(this._cells[r].length);
+      for(let c = 0; c < grid[r].length; c++) {
+        grid[r][c] = this._cells[r][c].getValue();
+      }
+    }
+    return grid;
+  }
+
+  getSize() {
+    if( this._cells == null) {
+      return 0;
+    }
+    return this._cells.length;
+  }
+
+  getRules() {
+    let rules = JSON.parse(JSON.stringify(this._rules));
+    return rules;
   }
 }

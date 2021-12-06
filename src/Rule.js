@@ -1,5 +1,5 @@
 //the sum of coordinates equals results
-class ArithmeticRule
+export class ArithmeticRule
 {
   constructor(result, operator, locations)
   {
@@ -90,7 +90,7 @@ class ArithmeticRule
 }
 
 //cells should have unique values from 1-n (n = coordinates.length)
-class UniqueValuesRule
+export class UniqueValuesRule
 {
   constructor(locs){
     this.locations = locs;
